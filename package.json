@@ -22,6 +22,7 @@
     "prisma:migrate": "prisma migrate deploy"
   },
   "dependencies": {
+    "@cursor/sdk": "^1.0.32",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^12.0.1",
     "@nestjs/core": "^11.0.1",
@@ -79,10 +80,11 @@
       "<rootDir>/test/setup-env.ts"
     ],
     "moduleNameMapper": {
-      "^octokit$": "<rootDir>/test/mocks/octokit.ts"
+      "^octokit$": "<rootDir>/test/mocks/octokit.ts",
+      "^@cursor/sdk$": "<rootDir>/test/mocks/cursor-sdk.ts"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!(@nestjs/config|nestjs-pino|pino|pino-http|zod|octokit|@octokit)/)"
+      "node_modules/(?!(@nestjs/config|nestjs-pino|pino|pino-http|zod|octokit|@octokit|@cursor)/)"
     ],
     "transform": {
       "^.+\\.(t|j)s$": [

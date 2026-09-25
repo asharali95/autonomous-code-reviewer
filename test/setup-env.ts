@@ -12,3 +12,7 @@ process.env.LOG_LEVEL = 'silent';
 process.env.MAX_PATCH_BYTES = '1000';
 process.env.MAX_MANIFEST_FILES = '2';
 process.env.GITHUB_API_MAX_RETRIES = '2';
+process.env.CURSOR_API_KEY = 'cursor_test_key';
+process.env.CURSOR_MODEL_ID = 'composer-2.5';
+process.env.AI_REVIEW_MAX_FILES = '10';
+process.env.AI_REVIEW_MAX_PROMPT_CHARS = '5000';

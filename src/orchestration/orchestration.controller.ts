@@ -22,6 +22,7 @@ import {
 import { N8nBearerGuard } from '../common/guards/n8n-bearer.guard';
 import { DiffBuilderService } from '../diffs/diff-builder.service';
 import { ReviewCyclesService } from '../review-cycles/review-cycles.service';
+import { ReviewService } from '../review/review.service';
 import { ClaimReviewCycleDto } from './dto/claim-review-cycle.dto';
 import { CompleteReviewCycleDto } from './dto/complete-review-cycle.dto';
 import { FailReviewCycleDto } from './dto/fail-review-cycle.dto';
@@ -31,6 +32,7 @@ import {
   DiffManifestResponseDto,
   FailCycleResponseDto,
   PrStateResponseDto,
+  RunAiReviewResponseDto,
 } from './dto/swagger-responses.dto';
 import { parseGithubRepoId, parsePullNumber } from './parse-ids';
 
@@ -43,6 +45,7 @@ export class OrchestrationController {
   constructor(
     private readonly reviewCycles: ReviewCyclesService,
     private readonly diffs: DiffBuilderService,
+    private readonly review: ReviewService,
   ) {}
 
   @Get('repositories/:githubRepoId/pulls/:number')
@@ -146,6 +149,19 @@ export class OrchestrationController {
     @Query('cursor') cursor?: string,
   ) {
     return this.diffs.buildManifest(reviewCycleId, cursor);
+  }
+
+  @Post('review-cycles/:reviewCycleId/review')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Run Cursor AI review for an IN_PROGRESS cycle',
+    description:
+      'Loads the prepared diff manifest, calls Cursor Agent (text-only) with patch excerpts, persists Finding rows, and returns a summary. Does not complete the cycle — call /complete afterward. Slack is out of scope.',
+  })
+  @ApiParam({ name: 'reviewCycleId', format: 'uuid' })
+  @ApiOkResponse({ type: RunAiReviewResponseDto })
+  runAiReview(@Param('reviewCycleId') reviewCycleId: string) {
+    return this.review.runReview(reviewCycleId);
   }
 
   @Post('review-cycles/:reviewCycleId/complete')

@@ -104,6 +104,23 @@ export class DiffBuilderService {
     };
   }
 
+  async buildFullManifest(reviewCycleId: string): Promise<DiffManifest> {
+    let cursor: string | undefined;
+    const files: DiffManifest['files'] = [];
+    let last: DiffManifest | undefined;
+    do {
+      last = await this.buildManifest(reviewCycleId, cursor);
+      files.push(...last.files);
+      cursor = last.pageInfo.nextCursor ?? undefined;
+    } while (cursor);
+    return {
+      ...last!,
+      files,
+      truncated: false,
+      pageInfo: { nextCursor: null },
+    };
+  }
+
   private async loadFiles(
     cycle: NonNullable<
       Awaited<ReturnType<ReviewCycleRepository['findByIdWithPullRequest']>>

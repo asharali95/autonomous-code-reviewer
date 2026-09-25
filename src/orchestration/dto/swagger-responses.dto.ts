@@ -112,6 +112,32 @@ export class FailCycleResponseDto {
   status!: string;
 }
 
+export class RunAiReviewResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  reviewCycleId!: string;
+
+  @ApiProperty({ example: 'reviewed' })
+  status!: string;
+
+  @ApiProperty({ example: 'Found one potential null dereference in auth flow.' })
+  summary!: string;
+
+  @ApiProperty({ example: 1 })
+  findingsCount!: number;
+
+  @ApiProperty({ example: 'composer-2.5' })
+  modelId!: string;
+
+  @ApiProperty({ example: 3 })
+  filesReviewed!: number;
+
+  @ApiProperty({
+    example: 0,
+    description: 'Reviewable files omitted due to AI_REVIEW_MAX_FILES / prompt size caps',
+  })
+  filesSkipped!: number;
+}
+
 export class DiffManifestFileDto {
   @ApiProperty({ example: 'src/foo.ts' })
   path!: string;

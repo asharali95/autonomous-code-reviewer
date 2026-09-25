@@ -16,6 +16,14 @@ const envSchema = z.object({
   MAX_PATCH_BYTES: z.coerce.number().int().positive().default(100_000),
   MAX_MANIFEST_FILES: z.coerce.number().int().positive().default(200),
   GITHUB_API_MAX_RETRIES: z.coerce.number().int().min(0).default(3),
+  CURSOR_API_KEY: z.string().min(1),
+  CURSOR_MODEL_ID: z.string().default('composer-2.5'),
+  AI_REVIEW_MAX_FILES: z.coerce.number().int().positive().default(40),
+  AI_REVIEW_MAX_PROMPT_CHARS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(120_000),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
