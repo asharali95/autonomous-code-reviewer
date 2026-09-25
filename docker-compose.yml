@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: reviewer
+      POSTGRES_PASSWORD: reviewer
+      POSTGRES_DB: reviewer
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U reviewer -d reviewer']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://reviewer:reviewer@postgres:5432/reviewer
+      N8N_API_TOKEN: ${N8N_API_TOKEN}
+      GITHUB_APP_ID: ${GITHUB_APP_ID}
+      GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
+      GITHUB_APP_PRIVATE_KEY_PATH: ${GITHUB_APP_PRIVATE_KEY_PATH:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
+      GITHUB_INSTALLATION_ID: ${GITHUB_INSTALLATION_ID:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MAX_PATCH_BYTES: ${MAX_PATCH_BYTES:-100000}
+      MAX_MANIFEST_FILES: ${MAX_MANIFEST_FILES:-200}
+      GITHUB_API_MAX_RETRIES: ${GITHUB_API_MAX_RETRIES:-3}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

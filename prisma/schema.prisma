@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PullRequestState {
+  OPEN
+  CLOSED
+}
+
+enum WebhookDeliveryStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+}
+
+enum ReviewCycleStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum DiffFallbackReason {
+  FORCE_PUSH
+  COMPARE_UNREACHABLE
+  MISSING_MERGE_BASE
+}
+
+enum FindingSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FindingStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+model GitHubRepository {
+  id               String        @id @default(uuid())
+  githubRepoId     BigInt        @unique
+  owner            String
+  name             String
+  fullName         String
+  webhookEnabledAt DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  pullRequests     PullRequest[]
+}
+
+model PullRequest {
+  id                String            @id @default(uuid())
+  repositoryId      String
+  repository        GitHubRepository  @relation(fields: [repositoryId], references: [id])
+  number            Int
+  githubPullId      BigInt?
+  title             String
+  state             PullRequestState
+  baseSha           String
+  headSha           String
+  lastReviewedSha   String?
+  lastReviewedAt    DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  reviewCycles      ReviewCycle[]
+  webhookDeliveries WebhookDelivery[]
+
+  @@unique([repositoryId, number])
+}
+
+model WebhookDelivery {
+  id            String                 @id @default(uuid())
+  deliveryId    String                 @unique
+  eventType     String
+  action        String?
+  status        WebhookDeliveryStatus
+  receivedAt    DateTime               @default(now())
+  processedAt   DateTime?
+  pullRequestId String?
+  pullRequest   PullRequest?           @relation(fields: [pullRequestId], references: [id])
+  reviewCycleId String?
+  reviewCycle   ReviewCycle?           @relation(fields: [reviewCycleId], references: [id])
+}
+
+model ReviewCycle {
+  id                 String              @id @default(uuid())
+  pullRequestId      String
+  pullRequest        PullRequest         @relation(fields: [pullRequestId], references: [id])
+  headSha            String
+  status             ReviewCycleStatus
+  diffBaseSha        String
+  diffHeadSha        String
+  diffFallbackReason DiffFallbackReason?
+  failureReason      String?
+  claimedAt          DateTime?
+  claimedBy          String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  failedAt           DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  findings           Finding[]
+  webhookDeliveries  WebhookDelivery[]
+
+  @@unique([pullRequestId, headSha])
+}
+
+model Finding {
+  id            String          @id @default(uuid())
+  reviewCycleId String
+  reviewCycle   ReviewCycle     @relation(fields: [reviewCycleId], references: [id])
+  fingerprint   String
+  severity      FindingSeverity
+  path          String
+  line          Int?
+  message       String
+  status        FindingStatus   @default(OPEN)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  events        FindingEvent[]
+
+  @@unique([reviewCycleId, fingerprint])
+}
+
+model FindingEvent {
+  id        String   @id @default(uuid())
+  findingId String
+  finding   Finding  @relation(fields: [findingId], references: [id])
+  eventType String
+  payload   Json
+  createdAt DateTime @default(now())
+}
+
+model OutboxEvent {
+  id            String    @id @default(uuid())
+  aggregateType String
+  aggregateId   String
+  eventType     String
+  payload       Json
+  createdAt     DateTime  @default(now())
+  publishedAt   DateTime?
+}
