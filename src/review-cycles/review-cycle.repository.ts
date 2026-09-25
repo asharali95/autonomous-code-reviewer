@@ -18,8 +18,9 @@ export class ReviewCycleRepository {
     headSha: string,
   ): Promise<ReviewCycle> {
     return this.prisma.$transaction(async (tx) => {
+      // IDs are Prisma String (Postgres TEXT), not native uuid columns.
       const locked = await tx.$queryRaw<PullRequest[]>`
-        SELECT * FROM "PullRequest" WHERE id = ${pullRequestId}::uuid FOR UPDATE
+        SELECT * FROM "PullRequest" WHERE id = ${pullRequestId} FOR UPDATE
       `;
       const pullRequest = locked[0];
       if (!pullRequest) {
@@ -68,7 +69,7 @@ export class ReviewCycleRepository {
   ): Promise<{ cycle: ReviewCycle; claimed: boolean }> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`
-        SELECT id FROM "ReviewCycle" WHERE id = ${cycleId}::uuid FOR UPDATE
+        SELECT id FROM "ReviewCycle" WHERE id = ${cycleId} FOR UPDATE
       `;
       const updated = await tx.reviewCycle.updateMany({
         where: {
