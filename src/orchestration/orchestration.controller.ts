@@ -9,13 +9,34 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBadRequestResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { N8nBearerGuard } from '../common/guards/n8n-bearer.guard';
 import { DiffBuilderService } from '../diffs/diff-builder.service';
 import { ReviewCyclesService } from '../review-cycles/review-cycles.service';
 import { ClaimReviewCycleDto } from './dto/claim-review-cycle.dto';
 import { CompleteReviewCycleDto } from './dto/complete-review-cycle.dto';
 import { FailReviewCycleDto } from './dto/fail-review-cycle.dto';
+import {
+  ClaimReviewCycleResponseDto,
+  CompleteCycleResponseDto,
+  DiffManifestResponseDto,
+  FailCycleResponseDto,
+  PrStateResponseDto,
+} from './dto/swagger-responses.dto';
+import { parseGithubRepoId, parsePullNumber } from './parse-ids';
 
+@ApiTags('orchestration')
+@ApiBearerAuth('n8n-bearer')
+@ApiUnauthorizedResponse({ description: 'Missing or invalid N8N_API_TOKEN' })
 @Controller('api/v1/orchestration')
 @UseGuards(N8nBearerGuard)
 export class OrchestrationController {
@@ -25,13 +46,28 @@ export class OrchestrationController {
   ) {}
 
   @Get('repositories/:githubRepoId/pulls/:number')
+  @ApiOperation({
+    summary: 'Get PR state',
+    description:
+      'Returns persisted repository/PR metadata and the active review cycle for the current head SHA (if any). `githubRepoId` is GitHub\'s numeric repository id (e.g. 1387749206), not the internal database UUID.',
+  })
+  @ApiParam({
+    name: 'githubRepoId',
+    example: '1387749206',
+    description: 'Numeric GitHub repository id',
+  })
+  @ApiParam({ name: 'number', example: '1' })
+  @ApiOkResponse({ type: PrStateResponseDto })
+  @ApiBadRequestResponse({
+    description: 'githubRepoId is not a numeric GitHub repository id',
+  })
   async getPrState(
     @Param('githubRepoId') githubRepoId: string,
     @Param('number') number: string,
   ) {
     const state = await this.reviewCycles.getPrState(
-      BigInt(githubRepoId),
-      Number(number),
+      parseGithubRepoId(githubRepoId),
+      parsePullNumber(number),
     );
     return {
       repository: {
@@ -62,9 +98,15 @@ export class OrchestrationController {
 
   @Post('review-cycles/claim')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Claim or start a review cycle',
+    description:
+      'Refreshes PR metadata from GitHub, ensures one cycle per (PR, headSha), then atomically moves PENDING/FAILED → IN_PROGRESS.',
+  })
+  @ApiOkResponse({ type: ClaimReviewCycleResponseDto })
   async claim(@Body() body: ClaimReviewCycleDto) {
     const result = await this.reviewCycles.claim({
-      githubRepoId: BigInt(body.githubRepoId),
+      githubRepoId: parseGithubRepoId(body.githubRepoId),
       pullNumber: body.pullNumber,
       headSha: body.headSha,
       workerId: body.workerId,
@@ -83,6 +125,22 @@ export class OrchestrationController {
   }
 
   @Get('review-cycles/:reviewCycleId/diff-manifest')
+  @ApiOperation({
+    summary: 'Get prepared diff manifest',
+    description:
+      'Builds an incremental file list for the cycle range (with force-push fallback). Supports cursor pagination.',
+  })
+  @ApiParam({
+    name: 'reviewCycleId',
+    format: 'uuid',
+    example: '42531d89-bfb7-48ca-bab5-cedb666785e2',
+  })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    description: 'Offset cursor from a previous pageInfo.nextCursor',
+  })
+  @ApiOkResponse({ type: DiffManifestResponseDto })
   getDiffManifest(
     @Param('reviewCycleId') reviewCycleId: string,
     @Query('cursor') cursor?: string,
@@ -92,6 +150,13 @@ export class OrchestrationController {
 
   @Post('review-cycles/:reviewCycleId/complete')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Complete a review cycle',
+    description:
+      'Marks IN_PROGRESS → COMPLETED, advances lastReviewedSha only when PR head still matches the cycle head, and writes an outbox event.',
+  })
+  @ApiParam({ name: 'reviewCycleId', format: 'uuid' })
+  @ApiOkResponse({ type: CompleteCycleResponseDto })
   complete(
     @Param('reviewCycleId') reviewCycleId: string,
     @Body() _body: CompleteReviewCycleDto,
@@ -101,6 +166,13 @@ export class OrchestrationController {
 
   @Post('review-cycles/:reviewCycleId/fail')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Mark a review cycle failed',
+    description:
+      'Marks IN_PROGRESS → FAILED without advancing lastReviewedSha. The same cycle can be reclaimed later.',
+  })
+  @ApiParam({ name: 'reviewCycleId', format: 'uuid' })
+  @ApiOkResponse({ type: FailCycleResponseDto })
   fail(
     @Param('reviewCycleId') reviewCycleId: string,
     @Body() body: FailReviewCycleDto,

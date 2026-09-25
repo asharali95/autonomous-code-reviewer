@@ -5,6 +5,7 @@ import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import type { AppEnv } from './config/env';
+import { setupSwagger } from './config/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -20,6 +21,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+  setupSwagger(app);
   const config = app.get(ConfigService<AppEnv, true>);
   await app.listen(config.get('PORT', { infer: true }));
 }

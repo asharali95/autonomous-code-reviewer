@@ -22,6 +22,15 @@ docker compose up --build
 PostgreSQL is not published to the host. The API is on `http://localhost:3000`.
 
 3. Health check: `GET /health`
+4. Swagger UI: `GET /docs` (OpenAPI also at `/docs-json`)
+
+Swagger lists these servers for Try it out:
+
+- `http://localhost:3000`
+- `https://code-reviewer-api.codefied.online`
+- `https://f04f-182-180-189-17.ngrok-free.app`
+
+Use **Authorize** with your `N8N_API_TOKEN` for orchestration routes.
 
 Without Docker, point `DATABASE_URL` at a reachable Postgres instance, then:
 
